@@ -9,10 +9,11 @@ const {
     addContact,
 } = require("../../models/contacts.js");
 
-const contactSchema = Joi.object({
+const schema = Joi.object({
     name: Joi.string().required(),
     email: Joi.string().email().required(),
     phone: Joi.string().required(),
+    favorite: Joi.boolean(),
 });
 
 router.get("/", async (req, res, next) => {
@@ -56,7 +57,7 @@ router.delete("/:contactId", async (req, res, next) => {
         if (!contact) {
             return res.status(404).json({ message: "Not found" });
         }
-        await removeContact(contactId);
+        await removeContact(req.params.contactId);
         res.status(200).json({ message: "Contact deleted" });
     } catch (error) {
         next(error);
@@ -72,6 +73,24 @@ router.put("/:contactId", async (req, res, next) => {
         const contact = await getContactById(req.params.contactId);
         if (!contact) {
             return res.status(404).json({ message: "Not found" });
+        }
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.patch("/contacts/:id/favorite", async (req, res, next) => {
+    const { id } = req.params;
+    const { favorite } = req.body;
+    try {
+        if (!favorite) {
+            return res.status(400).json({ message: "Missing field favorite" });
+        }
+        const result = await updateStatusContact({ id, favorite });
+        if (!result) {
+            next();
+        } else {
+            res.json(result);
         }
     } catch (error) {
         next(error);
