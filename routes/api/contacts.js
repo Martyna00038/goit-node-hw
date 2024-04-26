@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Joi = require("joi");
 const auth = require("./auth");
-const Contact = require("../models/contacts");
+const Contact = require("../../models/contacts");
 
 const schema = Joi.object({
     name: Joi.string().required(),
@@ -10,6 +10,8 @@ const schema = Joi.object({
     phone: Joi.string().required(),
     favorite: Joi.boolean(),
 });
+
+const { updateStatusContact } = require("../../controllers");
 
 router.use(auth);
 
@@ -40,10 +42,7 @@ router.get("/:contactId", async (req, res, next) => {
 
 router.post("/", async (req, res, next) => {
     try {
-        const { error } = schema.validate(req.body);
-        if (error) {
-            return res.status(400).json({ message: error.details[0].message });
-        }
+        const value = await schema.validateAsync(req.body);
         const newContact = new Contact({ ...value, owner: req.user._id });
         await newContact.save();
         res.status(201).json({
@@ -52,7 +51,7 @@ router.post("/", async (req, res, next) => {
             data: { newContact },
         });
     } catch (error) {
-        next(error);
+        res.status(400).json({ message: error.message });
     }
 });
 
@@ -76,25 +75,23 @@ router.delete("/:contactId", async (req, res, next) => {
     }
 });
 
-router.put("/:contactId", async (req, res, next) => {
+router.delete("/:contactId", async (req, res, next) => {
     try {
-        const value = schema.validate(req.body);
-        const contact = await Contact.findOneAndUpdate(
-            { _id: req.params.contactId, owner: req.user._id },
-            value,
-            { new: true }
-        );
+        const contact = await Contact.findOneAndDelete({
+            _id: req.params.contactId,
+            owner: req.user._id,
+        });
         if (contact) {
             res.json({
                 status: "success",
                 code: 200,
-                data: { updatedContact },
+                message: "Contact deleted",
             });
         } else {
-            res.status(404).json({ message: "Not found" });
+            res.json({ status: "error", code: 404, message: "Not found" });
         }
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        next(error);
     }
 });
 

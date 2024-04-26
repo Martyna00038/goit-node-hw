@@ -2,7 +2,7 @@ const express = require("express");
 const logger = require("morgan");
 const cors = require("cors");
 const jwtStrategy = require("./config/jwt");
-
+const mongoose = require("mongoose");
 const contactsRouter = require("./routes/api/contacts");
 
 require("dotenv").config();
@@ -15,10 +15,7 @@ const app = express();
 
 const formatsLogger = app.get("env") === "development" ? "dev" : "short";
 
-const mongoose = require("mongoose");
-
-mongoose
-    .connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
+connection
     .then(() => console.log("Database connection successful"))
     .catch((err) => {
         console.error("Database connection error", err);
