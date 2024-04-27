@@ -4,6 +4,7 @@ const cors = require("cors");
 const jwtStrategy = require("./config/jwt");
 const mongoose = require("mongoose");
 const contactsRouter = require("./routes/api/contacts");
+const usersRouter = require("./routes/api/users");
 
 require("dotenv").config();
 
@@ -29,6 +30,7 @@ app.use(express.json());
 jwtStrategy();
 
 app.use("/api/contacts", contactsRouter);
+app.use("/api/users", usersRouter);
 
 app.use((req, res) => {
     res.status(404).json({ message: "Not found" });

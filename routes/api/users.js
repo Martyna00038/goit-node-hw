@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/user");
+const User = require("../../models/user");
 const Joi = require("joi");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("../../middleware/jwt");
@@ -10,22 +10,29 @@ const userValidationSchema = Joi.object({
     password: Joi.string().min(6).required(),
 });
 
-router.post("/signup", async (req, res) => {
+router.post("/signup", async (req, res, next) => {
+    const { error } = userValidationSchema.validate(req.body);
+    if (error) {
+        return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const { email, password } = req.body;
+    const user = await User.findOne({ email }).lean();
+    if (user) {
+        return res.status(409).json({ message: "Email in use" });
+    }
     try {
-        const { email, password } = await userValidationSchema.validateAsync(
-            req.body
-        );
-        const user = await User.findOne({ email });
-        if (user) {
-            return res.status(409).json({ message: "Email in use" });
-        }
         const newUser = new User({ email, password });
+        await newUser.setPassword(password);
         await newUser.save();
-        res.status(201).json({
-            user: { email: newUser.email, subscription: newUser.subscription },
+        return res.status(201).json({
+            user: {
+                email: email,
+                subscription: newUser.subscription,
+            },
         });
     } catch (error) {
-        res.status(400).json({ message: error.details[0].message });
+        next(error);
     }
 });
 

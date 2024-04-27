@@ -11,7 +11,7 @@ const schema = Joi.object({
     favorite: Joi.boolean(),
 });
 
-const { updateStatusContact } = require("../../controllers");
+const { updateStatusContact } = require("../../controllers/controllers");
 
 router.use(auth);
 
