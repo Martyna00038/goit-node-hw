@@ -42,12 +42,12 @@ router.post("/login", async (req, res) => {
             req.body
         );
         const user = await User.findOne({ email });
-        if (!user || !(await user.isValidPassword(password))) {
+        if (!user || !(await user.validatePassword(password))) {
             return res
                 .status(401)
                 .json({ message: "Email or password is wrong" });
         }
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ id: user._id }, process.env.SECRET, {
             expiresIn: "1h",
         });
         user.token = token;
