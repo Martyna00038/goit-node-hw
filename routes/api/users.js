@@ -4,6 +4,12 @@ const User = require("../../models/user");
 const Joi = require("joi");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("../../middleware/jwt");
+const gravatar = require("gravatar");
+const { v4: uuidV4 } = require("uuid");
+const path = require("path");
+const uploadMiddleware = require("../../middleware/uploadMiddleware.js");
+const storeAvatarDir = path.join(__dirname, "../../public/avatars");
+const isImageAndTransform = require("../../helpers/helpers.js");
 
 const userValidationSchema = Joi.object({
     email: Joi.string().email().required(),
@@ -23,12 +29,16 @@ router.post("/signup", async (req, res, next) => {
     }
     try {
         const newUser = new User({ email, password });
+        const gravatarURL = gravatar.url(email);
+        console.log(gravatarURL);
         await newUser.setPassword(password);
+        newUser.avatarURL = gravatarURL;
         await newUser.save();
         return res.status(201).json({
             user: {
                 email: email,
                 subscription: newUser.subscription,
+                avatarURL: newUser.avatarURL,
             },
         });
     } catch (error) {
@@ -54,7 +64,11 @@ router.post("/login", async (req, res) => {
         await user.save();
         res.json({
             token,
-            user: { email: user.email, subscription: user.subscription },
+            user: {
+                email: user.email,
+                subscription: user.subscription,
+                avatarURL: newUser.avatarURL,
+            },
         });
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -81,10 +95,51 @@ router.get("/current", authMiddleware, async (req, res, next) => {
         return res.status(200).json({
             email: currentUser.email,
             subscription: currentUser.subscription,
+            avatarURL: newUser.avatarURL,
         });
     } catch (err) {
         next(err);
     }
 });
 
+router.post(
+    "/avatars",
+    authMiddleware,
+    uploadMiddleware.single("avatar"),
+    async (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ message: "Not authorized" });
+        }
+        if (!req.file) {
+            return res.status(400).json({ message: "No file uploaded" });
+        }
+        const { path: temporaryPath } = req.file;
+        const extension = path.extname(temporaryPath);
+        const fileName = `${uuidV4()}${extension}`;
+        const filePath = path.join(storeAvatarDir, fileName);
+
+        const isValidAndTransform = await isImageAndTransform(temporaryPath);
+        if (!isValidAndTransform) {
+            await fs.unlink(temporaryPath);
+            return res
+                .status(400)
+                .json({ message: "File isnt a photo but is pretending" });
+        }
+
+        try {
+            await fs.rename(temporaryPath, filePath);
+        } catch (error) {
+            await fs.unlink(temporaryPath);
+            return next(error);
+        }
+
+        try {
+            const currentUser = res.locals.user;
+            currentUser.avatarURL = `/avatars/${fileName}`;
+            return res.status(200).json({ avatarURL: currentUser.avatarURL });
+        } catch (err) {
+            next(err);
+        }
+    }
+);
 module.exports = router;
