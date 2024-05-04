@@ -142,4 +142,39 @@ router.post(
         }
     }
 );
+
+router.get("/auth/verify/:verificationToken", async (req, res, next) => {
+    try {
+        const verificationToken = req.params.verificationToken;
+        const user = await findUserByVerificationToken(verificationToken);
+        if (user) {
+            await updateVerificationStatus(user._id, { verify: true });
+            res.status(200).json("Verification successful");
+        }
+        if (!user) res.status(404).json("User not found");
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.post("/verify", async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        console.log({ email });
+        const validateEmail = schema.validate({ email });
+        if (validateEmail.error || !email) {
+            return res.status(400).json({ message: validateEmail.error });
+        }
+        const user = await findUserByEmail(email);
+        const { verificationToken, verify } = user;
+        if (verify) {
+            return res.status(400).json("Verification has already been passed");
+        }
+        await sendEmail(verificationToken, email);
+        res.status(200).json("Verification successful");
+    } catch (error) {
+        next(error);
+    }
+});
+
 module.exports = router;

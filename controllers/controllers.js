@@ -31,6 +31,7 @@ const updateStatusContact = async (id, favorite) => {
         }
     );
 };
+
 module.exports = {
     getAllContact,
     getOneContact,
